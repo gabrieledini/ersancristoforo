@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0907">
+<title>La Cripta di San Cristoforo</title>
+<style>
+:root{
+  --bg:#0b0907; --panel:#1a1410; --line:#3d3125;
+  --ink:#ecdfc4; --muted:#a3947a; --amber:#e0a84e; --wax:#f3e6c6;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:Georgia,"Times New Roman",serif;font-size:17px;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+#app{height:100%;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:18px;font-weight:normal;color:var(--amber);letter-spacing:.3px}
+#btnHint{background:none;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:15px}
+
+#scene{flex:1;position:relative;overflow:hidden;min-height:220px}
+#scene svg{position:absolute;inset:0;width:100%;height:100%}
+.hs{position:absolute;transform:translate(-50%,-50%);
+  background:rgba(14,10,7,.86);color:var(--ink);border:1px solid var(--amber);
+  border-radius:999px;padding:8px 13px;font-size:15px;white-space:nowrap;line-height:1;
+  box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.hs:active{background:var(--amber);color:#1a1008}
+body.using .hs{border-color:#8fd3c0;box-shadow:0 0 0 3px rgba(143,211,192,.25)}
+
+#msg{min-height:64px;max-height:120px;overflow:auto;padding:10px 14px;
+  background:#120e0b;border-top:1px solid var(--line);font-size:16px;line-height:1.4}
+#msg em{color:var(--amber);font-style:normal}
+
+footer{background:var(--panel);padding:8px 10px 10px;border-top:1px solid var(--line)}
+#nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;min-height:44px}
+#nav:empty{min-height:0;margin:0}
+.btn{background:#2a211a;color:var(--ink);border:1px solid #5b4a37;border-radius:10px;
+  padding:10px 14px;font-size:16px}
+.btn.gold{background:var(--amber);color:#1a1008;border-color:var(--amber)}
+#inv{display:flex;gap:8px;flex-wrap:wrap;min-height:44px;align-items:center}
+#inv .lbl{color:var(--muted);font-size:14px;margin-right:2px}
+.item{border:1px solid #5b4a37;border-radius:10px;padding:8px 12px;background:#221a15;
+  color:var(--ink);font-size:15px}
+.item.sel{border-color:#8fd3c0;background:#173129;color:#c9f3e6}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;
+  align-items:center;justify-content:center;padding:16px;z-index:10}
+.overlay.on{display:flex}
+.box{background:#1e1712;border:1px solid var(--amber);border-radius:14px;padding:18px 18px 16px;
+  width:100%;max-width:430px;max-height:88vh;overflow:auto}
+.box h2{margin:0 0 10px;color:var(--amber);font-size:21px;font-weight:normal}
+.box p{line-height:1.5;margin:8px 0}
+.box .lat{font-style:italic;color:var(--muted)}
+.box input{font-family:Georgia,serif;font-size:22px;letter-spacing:5px;text-transform:uppercase;
+  text-align:center;width:100%;padding:10px;border-radius:8px;border:1px solid #5b4a37;
+  background:#0b0907;color:var(--ink)}
+.box input.num{letter-spacing:1px;font-size:20px}
+.row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.epi{background:#0b0907;border:1px solid var(--line);padding:10px;border-radius:8px;
+  font-family:"Courier New",monospace;font-size:16px;letter-spacing:1px;line-height:1.5;word-break:break-word}
+.cand{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0}
+.cand button{background:#0b0907;border:1px solid #5b4a37;border-radius:10px;padding:10px 4px;color:var(--ink);font-size:13px}
+.cand button .f{display:block;font-size:22px;height:28px;line-height:28px}
+.cand button.lit{border-color:var(--amber);color:var(--amber)}
+.dials{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.dials label{display:block;text-align:center;font-size:14px;color:var(--muted);margin-bottom:4px}
+.intro-title{font-size:30px;margin:0 0 6px;color:var(--amber);font-weight:normal;line-height:1.1}
+.small{font-size:14px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){
+  .flame{animation:fl 1.6s ease-in-out infinite alternate}
+  @keyframes fl{from{opacity:.8;transform:scaleY(1)}to{opacity:1;transform:scaleY(1.12)}}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="roomName">Cripta</h1>
+    <button id="btnHint" aria-label="Chiedi un indizio">Indizio</button>
+  </header>
+  <main id="scene"></main>
+  <div id="msg"></div>
+  <footer>
+    <div id="nav"></div>
+    <div id="inv"></div>
+  </footer>
+</div>
+
+<div class="overlay on" id="intro">
+  <div class="box">
+    <h2 class="intro-title">La Cripta di San Cristoforo</h2>
+    <p>Hai risalito le scale bagnate del cunicolo. In cima, una grata arrugginita cede sotto le tue mani: la spingi e ti ritrovi in un luogo buio, freddo, che sa di cera e di pietra.</p>
+    <p>Sei nella cripta del monastero di San Cristoforo. Alle tue spalle la grata si richiude con uno scatto secco.</p>
+    <p class="small">Tocca gli oggetti per esaminarli. Seleziona un oggetto dalla borsa e poi tocca dove usarlo. Il pulsante Indizio ti aiuta se ti blocchi.</p>
+    <div class="row"><button class="btn gold" id="btnStart">Entra nella cripta</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="box" id="box"></div></div>
+
+<script>
+// ---------- configurazione ----------
+const NEXT_URL = ""; // se valorizzato, il finale mostra "Prosegui l'avventura"
+
+const S = { room:'cripta', inv:[], sel:null, f:{}, hints:0, hintLvl:{}, lit:[0,0,0,0,0], order:[] };
+const ITEMS = { olio:"Ampolla d'olio", acciarino:"Acciarino", chiave:"Chiave dell'ossario" };
+
+// ---------- audio ----------
+let AC=null;
+function tone(f,d=0.12,type='sine',v=0.12){
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type; o.frequency.value=f; g.gain.value=v;
+    o.connect(g); g.connect(AC.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+d);
+    o.stop(AC.currentTime+d);
+  }catch(e){}
+}
+const sfx={
+  click:()=>tone(520,.05,'triangle',.05),
+  ok:()=>{tone(523,.15);setTimeout(()=>tone(659,.15),120);setTimeout(()=>tone(784,.35),240);},
+  no:()=>tone(150,.3,'sawtooth',.1),
+  unlock:()=>{tone(200,.12,'square',.08);setTimeout(()=>tone(300,.25,'square',.08),110);},
+  get:()=>{tone(880,.1);setTimeout(()=>tone(1175,.22),90);},
+  wind:()=>{tone(90,.6,'sawtooth',.06);setTimeout(()=>tone(70,.6,'sawtooth',.05),200);},
+  bell:()=>{tone(392,1.2,'sine',.15);setTimeout(()=>tone(523,1.4,'sine',.12),400);setTimeout(()=>tone(659,1.8,'sine',.1),800);}
+};
+
+// ---------- utilità ----------
+const $=id=>document.getElementById(id);
+function say(t){ $('msg').innerHTML=t; }
+function has(k){ return S.inv.includes(k); }
+function give(k,text){ if(!has(k)){ S.inv.push(k); sfx.get(); } say(text); renderInv(); render(); }
+function take(k){ S.inv=S.inv.filter(x=>x!==k); if(S.sel===k) S.sel=null; renderInv(); }
+function modal(html){ $('box').innerHTML=html; $('overlay').classList.add('on'); }
+function closeModal(){ $('overlay').classList.remove('on'); }
+$('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+
+// ---------- scene SVG ----------
+function svgCripta(){
+  const cx=[168,184,200,216,232];
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1610"/><stop offset="1" stop-color="#060402"/></linearGradient>
+    <radialGradient id="gl"><stop offset="0" stop-color="#f0a040" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="400" height="480" fill="url(#bgc)"/>
+  <ellipse cx="200" cy="240" rx="210" ry="160" fill="url(#gl)"/>
+  <path d="M-30 180 Q85 40 200 180 Q315 40 430 180" fill="none" stroke="#3a2e22" stroke-width="14"/>
+  <path d="M-30 180 Q85 40 200 180 Q315 40 430 180" fill="none" stroke="#1f1811" stroke-width="4"/>
+  <rect y="345" width="400" height="135" fill="#0f0b08"/>
+  <g stroke="#1c1510" stroke-width="1">${[365,390,415,440,465].map(y=>`<line x1="0" y1="${y}" x2="400" y2="${y}"/>`).join('')}</g>
+  <g fill="#3a322a" stroke="#5d5041" stroke-width="2">
+    <rect x="16" y="288" width="116" height="54" rx="4"/><rect x="268" y="288" width="116" height="54" rx="4"/>
+    <rect x="16" y="382" width="116" height="54" rx="4"/><rect x="268" y="382" width="116" height="54" rx="4"/>
+  </g>
+  <g fill="#2a241d"><rect x="24" y="296" width="100" height="6"/><rect x="276" y="296" width="100" height="6"/><rect x="24" y="390" width="100" height="6"/><rect x="276" y="390" width="100" height="6"/></g>
+  <rect x="150" y="238" width="100" height="104" fill="#4a3f33" stroke="#6c5b48" stroke-width="2"/>
+  <rect x="140" y="230" width="120" height="12" fill="#6c5b48"/>
+  ${S.f.nicchia?`<rect x="165" y="262" width="70" height="44" fill="#000"/>${!has('chiave')&&!S.f.tookKey?`<path d="M190 284 h18 M192 280 v8 M206 280 v8" stroke="#e0a84e" stroke-width="3"/><circle cx="187" cy="284" r="5" fill="none" stroke="#e0a84e" stroke-width="3"/>`:''}`:''}
+  ${cx.map((x,i)=>`<rect x="${x-3}" y="206" width="6" height="26" fill="#f3e6c6"/>${S.lit[i]?`<g class="flame" style="transform-origin:${x}px 206px"><ellipse cx="${x}" cy="199" rx="4" ry="9" fill="#ffb347"/><ellipse cx="${x}" cy="201" rx="2" ry="4.5" fill="#fff6d0"/></g>`:''}`).join('')}
+  <rect x="196" y="92" width="8" height="98" fill="#5a3d26"/><rect x="171" y="116" width="58" height="8" fill="#5a3d26"/>
+  <path d="M296 345 l96 -44 v-9 l-96 44z M306 330 l86 -39 v-9 l-86 39z M316 315 l76 -34 v-9 l-76 34z M326 300 l66 -30 v-9 l-66 30z" fill="#2b241d"/>
+  <rect x="338" y="150" width="56" height="124" rx="28" fill="#161a1f" stroke="#4b525a" stroke-width="3"/>
+  <line x1="366" y1="150" x2="366" y2="274" stroke="#4b525a" stroke-width="2"/>
+  <g fill="#7a6a55">${[190,230].map(y=>`<circle cx="352" cy="${y}" r="2.5"/><circle cx="380" cy="${y}" r="2.5"/>`).join('')}</g>
+  <rect x="8" y="150" width="72" height="124" rx="36" fill="#040302" stroke="#4a3a2a" stroke-width="3"/>
+  <g stroke="#6a5a48" stroke-width="3">${[24,40,56,72].map(x=>`<line x1="${x}" y1="152" x2="${x}" y2="272"/>`).join('')}</g>
+  <rect x="14" y="205" width="16" height="14" fill="${S.f.oiled?'#6a5a48':'#7a3b22'}"/>
+  <rect x="158" y="424" width="84" height="40" fill="#040302" stroke="#4a3a2a" stroke-width="2"/>
+  <g stroke="#5a4a38" stroke-width="2">${[172,188,204,220].map(x=>`<line x1="${x}" y1="426" x2="${x}" y2="462"/>`).join('')}</g>
+  </svg>`;
+}
+function svgScriptorium(){
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="bgs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1f15"/><stop offset="1" stop-color="#0d0906"/></linearGradient>
+  <radialGradient id="wl"><stop offset="0" stop-color="#9fb8d8" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+  <rect width="400" height="480" fill="url(#bgs)"/>
+  <rect y="330" width="400" height="150" fill="#2b1d12"/>
+  <g stroke="#1e140c" stroke-width="2">${[350,380,410,440,470].map(y=>`<line x1="0" y1="${y}" x2="400" y2="${y}"/>`).join('')}</g>
+  <path d="M290 60 q30 -40 60 0 v120 h-60z" fill="#5f7a99"/><ellipse cx="320" cy="130" rx="110" ry="90" fill="url(#wl)"/>
+  <path d="M290 60 q30 -40 60 0 v120 h-60z" fill="none" stroke="#3a2c1e" stroke-width="6"/><line x1="320" y1="40" x2="320" y2="180" stroke="#3a2c1e" stroke-width="4"/>
+  <rect x="20" y="70" width="110" height="200" fill="#3a2a1c" stroke="#54402c" stroke-width="3"/>
+  ${[100,150,200,250].map(y=>`<rect x="24" y="${y}" width="102" height="4" fill="#54402c"/>`).join('')}
+  ${[[28,74,14],[46,80,12],[62,72,16],[82,78,10],[96,70,14],[114,76,10]].map(([x,h,w])=>`<rect x="${x}" y="${100-h+2}" width="${w}" height="${h-4}" fill="${['#7a3b2a','#4b5e3a','#8a6a2a','#3f4d6a'][x%4]}"/>`).join('')}
+  ${[[28,44,14],[48,48,18],[70,40,12],[86,46,14],[104,44,18]].map(([x,h,w])=>`<rect x="${x}" y="${150-h+2}" width="${w}" height="${h-4}" fill="${['#6a2f2a','#3f4d6a','#8a6a2a','#4b5e3a'][(x>>3)%4]}"/>`).join('')}
+  ${[[30,42,12],[46,38,20],[70,46,14],[90,40,16],[110,44,12]].map(([x,h,w])=>`<rect x="${x}" y="${200-h+2}" width="${w}" height="${h-4}" fill="${['#3f4d6a','#7a3b2a','#4b5e3a','#8a6a2a'][(x>>2)%4]}"/>`).join('')}
+  <path d="M170 350 l20 -110 h50 l20 110z" fill="#4a3320" stroke="#6a4a2c" stroke-width="3"/>
+  <path d="M150 250 l100 -20 v-8 l-100 20z" fill="#6a4a2c"/>
+  <path d="M155 245 l45 -9 v-38 l-45 9z" fill="#efe1c2"/><path d="M200 236 l45 -9 v-38 l-45 9z" fill="#e5d5b3"/>
+  ${[0,1,2,3,4].map(i=>`<line x1="160" y1="${208+i*7}" x2="196" y2="${201+i*7}" stroke="#6a5a48" stroke-width="1.5"/><line x1="204" y1="${199+i*7}" x2="240" y2="${192+i*7}" stroke="#6a5a48" stroke-width="1.5"/>`).join('')}
+  <rect x="60" y="330" width="90" height="10" fill="#4a3320"/><rect x="66" y="340" width="8" height="60" fill="#3a2a1c"/><rect x="136" y="340" width="8" height="60" fill="#3a2a1c"/>
+  <path d="M78 326 l34 -6 l24 6 l-30 6z" fill="#efe1c2"/>
+  <rect x="330" y="300" width="14" height="30" fill="#f3e6c6"/><g class="flame" style="transform-origin:337px 300px"><ellipse cx="337" cy="292" rx="5" ry="10" fill="#ffb347"/><ellipse cx="337" cy="294" rx="2.5" ry="5" fill="#fff6d0"/></g>
+  </svg>`;
+}
+function svgChiostro(){
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2438"/><stop offset=".6" stop-color="#5a4a5a"/><stop offset="1" stop-color="#c9895a"/></linearGradient></defs>
+  <rect width="400" height="480" fill="#1a1410"/>
+  <rect x="40" y="0" width="320" height="230" fill="url(#sky)"/>
+  ${[60,110,160,210,260,310].map(x=>`<circle cx="${x+15}" cy="${20+(x%3)*9}" r="1.2" fill="#fff" opacity=".7"/>`).join('')}
+  ${[0,1,2,3,4,5,6].map(i=>{const x=40+i*53;return `<rect x="${x-8}" y="80" width="16" height="150" fill="#8a7a62"/><rect x="${x-14}" y="72" width="28" height="10" fill="#a08e73"/><path d="M${x} 80 q26 -50 53 0" fill="none" stroke="#8a7a62" stroke-width="8"/>`;}).join('')}
+  <rect y="0" width="40" height="480" fill="#2a2119"/><rect x="360" y="0" width="40" height="480" fill="#2a2119"/>
+  <rect y="230" width="400" height="250" fill="#5b7a4a"/>
+  <path d="M0 230 h400 v40 h-400z" fill="#8a7a62"/>
+  <rect x="0" y="230" width="400" height="6" fill="#a08e73"/>
+  <path d="M-20 480 q120 -60 220 -40 t220 40z" fill="#4c6a3e"/>
+  <ellipse cx="200" cy="360" rx="70" ry="22" fill="#6d6152"/>
+  <rect x="140" y="300" width="120" height="60" fill="#8a7a62"/><ellipse cx="200" cy="300" rx="60" ry="18" fill="#3b3229"/><ellipse cx="200" cy="300" rx="60" ry="18" fill="none" stroke="#a08e73" stroke-width="5"/>
+  <rect x="150" y="240" width="8" height="70" fill="#4a3320"/><rect x="242" y="240" width="8" height="70" fill="#4a3320"/><rect x="146" y="234" width="108" height="8" fill="#4a3320"/>
+  <rect x="42" y="240" width="60" height="120" rx="30" fill="#2a1a10" stroke="#5a3d26" stroke-width="4"/>
+  <circle cx="90" cy="305" r="4" fill="#d4a24c"/>
+  <circle cx="336" cy="120" r="34" fill="#d8c9a5" stroke="#5a4a37" stroke-width="3"/>
+  ${[0,1,2,3,4,5,6].map(i=>{const a=Math.PI/2+ (i-3)*Math.PI/7; return `<line x1="336" y1="120" x2="${336+Math.cos(a)*30}" y2="${120+Math.sin(a)*30}" stroke="#5a4a37" stroke-width="1.5"/>`;}).join('')}
+  <line x1="336" y1="120" x2="350" y2="146" stroke="#1a1410" stroke-width="3"/>
+  </svg>`;
+}
+function svgRefettorio(){
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="bgr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241a12"/><stop offset="1" stop-color="#0e0906"/></linearGradient>
+  <radialGradient id="fg"><stop offset="0" stop-color="#ff7a30" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+  <rect width="400" height="480" fill="url(#bgr)"/>
+  <rect y="320" width="400" height="160" fill="#2a1d12"/>
+  <g stroke="#1e140c" stroke-width="2">${[345,375,405,435,465].map(y=>`<line x1="0" y1="${y}" x2="400" y2="${y}"/>`).join('')}</g>
+  <path d="M10 320 v-160 q0 -30 30 -30 h60 q30 0 30 30 v160z" fill="#4a3b2c"/>
+  <rect x="26" y="180" width="88" height="140" fill="#090604"/><ellipse cx="70" cy="300" rx="60" ry="40" fill="url(#fg)"/>
+  <rect x="40" y="290" width="60" height="18" fill="#3a2a1c"/><path d="M50 290 l10 -30 l12 30z" fill="#4a3320"/>
+  <rect x="290" y="130" width="100" height="190" fill="#5a3d26" stroke="#3a2a1c" stroke-width="3"/>
+  <rect x="298" y="140" width="40" height="80" fill="#4a3320" stroke="#3a2a1c" stroke-width="2"/><rect x="342" y="140" width="40" height="80" fill="#4a3320" stroke="#3a2a1c" stroke-width="2"/>
+  <rect x="298" y="228" width="84" height="40" fill="#4a3320" stroke="#3a2a1c" stroke-width="2"/><rect x="298" y="274" width="84" height="40" fill="#4a3320" stroke="#3a2a1c" stroke-width="2"/>
+  <rect x="330" y="176" width="20" height="14" fill="#8a7a62"/>
+  <path d="M120 340 l30 -70 h100 l30 70z" fill="#5a3d26"/><rect x="150" y="270" width="100" height="6" fill="#8a6a45"/>
+  <rect x="130" y="340" width="10" height="70" fill="#4a3320"/><rect x="260" y="340" width="10" height="70" fill="#4a3320"/>
+  <rect x="120" y="335" width="160" height="10" fill="#3a2a1c"/>
+  <path d="M175 265 l22 -3 l-1 -32 l-24 5z" fill="#7a5a3a"/><path d="M200 262 l22 -4 l3 -30 l-24 3z" fill="#7a5a3a"/>
+  <rect x="120" y="420" width="90" height="10" fill="#4a3320"/><path d="M130 420 q-4 -30 8 -34 h20 q12 4 8 34z" fill="#8a6a45"/><path d="M170 420 q-4 -26 6 -30 h16 q10 4 6 30z" fill="#8a6a45"/>
+  <rect x="150" y="220" width="100" height="40" fill="#d8c9a5" opacity=".08"/>
+  </svg>`;
+}
+function svgCella(){
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="bgl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2219"/><stop offset="1" stop-color="#0e0a07"/></linearGradient>
+  <radialGradient id="dl"><stop offset="0" stop-color="#e9b78a" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>
+  <rect width="400" height="480" fill="url(#bgl)"/>
+  <rect y="330" width="400" height="150" fill="#2b1d12"/>
+  <g stroke="#1e140c" stroke-width="2">${[350,380,410,440,470].map(y=>`<line x1="0" y1="${y}" x2="400" y2="${y}"/>`).join('')}</g>
+  <path d="M175 70 q25 -30 50 0 v70 h-50z" fill="#c98a5a"/><ellipse cx="200" cy="140" rx="120" ry="90" fill="url(#dl)"/>
+  <path d="M175 70 q25 -30 50 0 v70 h-50z" fill="none" stroke="#3a2c1e" stroke-width="5"/>
+  <rect x="20" y="250" width="150" height="70" fill="#4a3320"/><rect x="20" y="230" width="150" height="26" fill="#d8c9a5"/><rect x="20" y="220" width="40" height="18" rx="4" fill="#efe1c2"/>
+  <rect x="24" y="320" width="10" height="60" fill="#3a2a1c"/><rect x="156" y="320" width="10" height="60" fill="#3a2a1c"/>
+  <rect x="230" y="270" width="150" height="14" fill="#5a3d26"/><rect x="236" y="284" width="10" height="90" fill="#4a3320"/><rect x="364" y="284" width="10" height="90" fill="#4a3320"/>
+  <path d="M262 268 l40 -4 v-30 l-40 4z" fill="#efe1c2"/><line x1="270" y1="248" x2="296" y2="245" stroke="#6a5a48" stroke-width="1.5"/><line x1="270" y1="256" x2="296" y2="253" stroke="#6a5a48" stroke-width="1.5"/>
+  <rect x="330" y="240" width="10" height="28" fill="#f3e6c6"/><g class="flame" style="transform-origin:335px 240px"><ellipse cx="335" cy="233" rx="4" ry="9" fill="#ffb347"/><ellipse cx="335" cy="235" rx="2" ry="4" fill="#fff6d0"/></g>
+  <rect x="120" y="120" width="8" height="70" fill="#5a3d26"/><rect x="100" y="138" width="48" height="8" fill="#5a3d26"/>
+  </svg>`;
+}
+
+// ---------- stanze ----------
+const ROOMS = {
+  cripta:{
+    name:'Cripta', svg:svgCripta,
+    enter:"La cripta è bassa e umida. Quattro sarcofagi, un altare con cinque candele spente, una grata chiusa a sinistra e una scala che sale verso una porta di ferro.",
+    hs:()=>[
+      {x:18,y:65,l:'Sarcofago',a:()=>say('<em>FRATER ANSELMUS · OBIIT A.D. MCCXLI</em><br>Un giglio inciso sulla lastra.')},
+      {x:82,y:65,l:'Sarcofago',a:()=>say('<em>FRATER BENEDICTUS · OBIIT A.D. MCLXXXIX</em><br>La lastra è la più consumata di tutte.')},
+      {x:18,y:85,l:'Sarcofago',a:()=>say('<em>FRATER CONRADUS · OBIIT A.D. MCCCXII</em><br>Le lettere sono ancora nitide, incise di recente.')},
+      {x:82,y:85,l:'Sarcofago',a:()=>say('<em>FRATER DAMIANUS · OBIIT A.D. MCCLVIII</em><br>Sotto il nome, un piccolo pesce.')},
+      {x:50,y:29,l:'Crocifisso',a:()=>{S.f.cross=true;say('Un Crocifisso di legno annerito dal fumo. Il Cristo è fissato con <em>tre chiodi</em>: uno per ciascuna mano, uno solo per i piedi.');}},
+      {x:50,y:46,l:'Candele',a:openCandles},
+      ...(S.f.nicchia&&!S.f.tookKey?[{x:50,y:58,l:'Nicchia aperta',a:()=>{S.f.tookKey=true;give('chiave','Dentro la nicchia, su un cuscino di velluto consumato, una chiave di ferro con l\'impugnatura a forma di teschio. La prendi.');}}]:[]),
+      {x:88,y:44,l:'Porta di ferro',a:()=>S.f.ironDoor?say('La porta di ferro è aperta. La scala sale verso lo scriptorium.'):openLetterLock()},
+      {x:14,y:44,l:'Grata dell\'ossario',a:ossario,use:ossarioUse},
+      {x:50,y:92,l:'Grata',a:()=>say('La grata da cui sei salito. Si è bloccata: non c\'è modo di riaprirla.')},
+    ],
+    nav:()=>S.f.ironDoor?[{l:'Sali allo scriptorium',to:'scriptorium'}]:[]
+  },
+  scriptorium:{
+    name:'Scriptorium', svg:svgScriptorium,
+    enter:"Lo scriptorium: un leggio con un codice aperto, uno scaffale di libri, una finestra che dà sul chiostro. Un tavolino con una pergamena.",
+    hs:()=>[
+      {x:50,y:56,l:'Codice sul leggio',a:openCodex},
+      {x:26,y:70,l:'Pergamena',a:()=>{S.f.note=true;say('Una nota del copista, in italiano volgare: <em>«Ho spinto ogni lettera in avanti di tanti passi quanti sono i chiodi del Crocifisso nella cripta. Chi vuol leggere, la riporti indietro.»</em>');}},
+      {x:19,y:34,l:'Scaffale',a:()=>say('Salteri, erbari, un trattato di aritmetica. Sul dorso di uno: <em>«Chi sa contare, sa aprire»</em>.')},
+      {x:80,y:26,l:'Finestra',a:()=>say('Dalla finestra vedi il chiostro, la meridiana sul muro e il pozzo. Il cielo comincia a schiarire: è quasi l\'alba.')},
+    ],
+    nav:()=>[{l:'Scendi nella cripta',to:'cripta'},{l:'Vai nel chiostro',to:'chiostro'}]
+  },
+  chiostro:{
+    name:'Chiostro', svg:svgChiostro,
+    enter:"Il chiostro, sotto un cielo grigio d'alba. Colonne, un pozzo al centro, una meridiana sul muro e una porta chiusa con un'iscrizione.",
+    hs:()=>[
+      {x:50,y:64,l:'Pozzo',a:()=>say('Il pozzo è chiuso da una lastra di pietra. Nessuna corda, nessun secchio. Sul bordo, incisa a graffio: <em>«Fides»</em>? No: una sola lettera, <em>F</em>, e il resto cancellato dal tempo.')},
+      {x:50,y:36,l:'Colonne',a:()=>say('Colonne di pietra chiara. Su un capitello, San Cristoforo che porta il Bambino sulle spalle attraverso il fiume.')},
+      {x:18,y:56,l:'Porta dell\'abate',a:()=>S.f.cellDoor?say('La porta della cella dell\'abate è aperta.'):openWordLock()},
+      {x:84,y:38,l:'Meridiana',a:()=>{S.f.sundial=true;say('Una meridiana con le ore canoniche: <em>Mattutino</em> all\'alba, <em>Terza</em> a metà mattina, <em>Sesta</em> a mezzogiorno, <em>Nona</em> nel pomeriggio, <em>Vespro</em> al tramonto.');}},
+    ],
+    nav:()=>[{l:'Scriptorium',to:'scriptorium'},{l:'Refettorio',to:'refettorio'},...(S.f.cellDoor?[{l:'Cella dell\'abate',to:'cella'}]:[])]
+  },
+  refettorio:{
+    name:'Refettorio', svg:svgRefettorio,
+    enter:"Il refettorio. Una lunga tavola, un camino spento, brocche di coccio e una credenza chiusa con tre rotelle numerate.",
+    hs:()=>[
+      {x:50,y:60,l:'Iscrizione sulla tavola',a:()=>{S.f.recipe=true;modal(`<h2>Il pane dei pellegrini</h2><p class="lat">Inciso sul legno della tavola:</p><p>«Il <em>sale</em> sia la metà dell'<em>olio</em>.<br>La <em>farina</em> sia il triplo del sale e dell'olio messi insieme.<br>In tutto, <em>ventiquattro misure</em>, né una di più né una di meno.»</p><div class="row"><button class="btn" onclick="closeModal()">Chiudi</button></div>`);}},
+      {x:84,y:44,l:'Credenza',a:()=>S.f.credenza?say('La credenza è aperta e vuota.'):openNumberLock()},
+      {x:17,y:44,l:'Camino',a:()=>say('Cenere fredda. Sulla mensola, un gancio vuoto: qui stava appeso un acciarino.')},
+      {x:40,y:86,l:'Brocche',a:()=>say('Brocche di coccio, vuote. Una ha ancora un odore di vino aspro.')},
+    ],
+    nav:()=>[{l:'Torna nel chiostro',to:'chiostro'}]
+  },
+  cella:{
+    name:'Cella dell\'abate', svg:svgCella,
+    enter:"Una cella spoglia: un letto, uno scrittoio con una pergamena e una candela accesa.",
+    hs:()=>[
+      {x:72,y:52,l:'Pergamena',a:()=>{S.f.scroll=true;modal(`<h2>Regola per i lumi dell'altare</h2><p class="lat">Scritta con mano ferma:</p><p>«Accendi i lumi della cripta così:<br>prima <em>l'ora che chiude il giorno</em>,<br>poi <em>quella che lo apre</em>,<br>poi <em>la sesta</em>,<br>poi <em>la terza</em>,<br>e <em>la nona</em> per ultima.<br>Sbaglia, e il vento della scala spegnerà ogni cosa.»</p><div class="row"><button class="btn" onclick="closeModal()">Chiudi</button></div>`);}},
+      {x:24,y:62,l:'Letto',a:()=>say('Un pagliericcio duro e una coperta ripiegata. L\'abate viveva senza comodità.')},
+      {x:50,y:22,l:'Finestrella',a:()=>say('Oltre la finestrella, le colline. Il monastero è cinto da un muro alto: da qui non si esce.')},
+    ],
+    nav:()=>[{l:'Torna nel chiostro',to:'chiostro'}]
+  }
+};
+
+// ---------- enigmi ----------
+function openLetterLock(){
+  modal(`<h2>Porta di ferro</h2><p>Quattro dischi di bronzo con lettere. Sopra, un'iscrizione:</p><p class="lat">«NOMINA I FRATELLI NELL'ORDINE IN CUI IL SIGNORE LI CHIAMÒ A SÉ»</p>
+  <input id="lk" maxlength="4" autocomplete="off" inputmode="latin" placeholder="····">
+  <div class="row"><button class="btn gold" id="lkOk">Gira i dischi</button><button class="btn" onclick="closeModal()">Chiudi</button></div>`);
+  $('lkOk').onclick=()=>{
+    const v=$('lk').value.toUpperCase().replace(/[^A-Z]/g,'');
+    if(v==='BADC'){ S.f.ironDoor=true; sfx.unlock(); closeModal(); say('I dischi scattano uno dopo l\'altro. La porta di ferro si apre cigolando: la scala sale verso lo scriptorium.'); render(); }
+    else { sfx.no(); $('lk').value=''; $('lk').placeholder='no…'; }
+  };
+  setTimeout(()=>$('lk').focus(),50);
+}
+function openCodex(){
+  S.f.codex=true;
+  modal(`<h2>Codice miniato</h2><p>La pagina aperta è scritta in una grafia strana. Le lettere non formano parole che conosci:</p>
+  <div class="epi">OD SRUWD GHOO'DEDWH<br>VL DSUH FRQ<br>ILGHV</div>
+  <p class="small">Le altre pagine sono salmi in latino, senza nulla di strano.</p>
+  <div class="row"><button class="btn" onclick="closeModal()">Chiudi</button></div>`);
+}
+function openWordLock(){
+  modal(`<h2>Porta dell'abate</h2><p>Sull'architrave, cinque caselle vuote con lettere di legno da comporre. Sotto: <span class="lat">«Dì la parola, ed entra».</span></p>
+  <input id="wk" maxlength="5" autocomplete="off" placeholder="·····">
+  <div class="row"><button class="btn gold" id="wkOk">Componi</button><button class="btn" onclick="closeModal()">Chiudi</button></div>`);
+  $('wkOk').onclick=()=>{
+    const v=$('wk').value.toUpperCase().replace(/[^A-Z]/g,'');
+    if(v==='FIDES'){ S.f.cellDoor=true; sfx.unlock(); closeModal(); say('Le lettere di legno si allineano e un chiavistello interno scorre. La cella dell\'abate è aperta.'); render(); }
+    else { sfx.no(); $('wk').value=''; $('wk').placeholder='no…'; }
+  };
+  setTimeout(()=>$('wk').focus(),50);
+}
+function openNumberLock(){
+  modal(`<h2>Credenza</h2><p>Tre rotelle numerate, ciascuna con una parola incisa sopra.</p>
+  <div class="dials">
+    <div><label>Sale</label><input class="num" id="n1" inputmode="numeric" maxlength="2" placeholder="0"></div>
+    <div><label>Olio</label><input class="num" id="n2" inputmode="numeric" maxlength="2" placeholder="0"></div>
+    <div><label>Farina</label><input class="num" id="n3" inputmode="numeric" maxlength="2" placeholder="0"></div>
+  </div>
+  <div class="row"><button class="btn gold" id="nkOk">Gira le rotelle</button><button class="btn" onclick="closeModal()">Chiudi</button></div>`);
+  $('nkOk').onclick=()=>{
+    const a=+$('n1').value, b=+$('n2').value, c=+$('n3').value;
+    if(a===2&&b===4&&c===18){
+      S.f.credenza=true; sfx.unlock(); closeModal();
+      S.inv.push('olio'); S.inv.push('acciarino'); sfx.get();
+      say('Le rotelle si fermano con tre scatti secchi. Dentro la credenza: un\'<em>ampolla d\'olio</em> e un <em>acciarino</em>. Li prendi.');
+      renderInv(); render();
+    } else { sfx.no(); ['n1','n2','n3'].forEach(i=>$(i).value=''); }
+  };
+  setTimeout(()=>$('n1').focus(),50);
+}
+
+const CANDLES=['Terza','Vespro','Nona','Mattutino','Sesta'];
+const CANDLE_ANSWER=['Vespro','Mattutino','Sesta','Terza','Nona'];
+function openCandles(){
+  if(S.f.nicchia){ say('Le cinque candele ardono tranquille sull\'altare.'); return; }
+  if(!has('acciarino')){ say('Cinque candele spente, ognuna con un cartiglio: <em>Terza, Vespro, Nona, Mattutino, Sesta</em>. Non hai nulla per accenderle.'); return; }
+  renderCandles();
+}
+function renderCandles(){
+  modal(`<h2>Le candele dell'altare</h2><p>Con l'acciarino puoi accenderle una alla volta. L'ordine conta.</p>
+  <div class="cand">${CANDLES.map((c,i)=>`<button data-i="${i}" class="${S.lit[i]?'lit':''}"><span class="f">${S.lit[i]?'🕯️':'·'}</span>${c}</button>`).join('')}</div>
+  <div class="row"><button class="btn" onclick="closeModal()">Allontanati</button></div>`);
+  $('box').querySelectorAll('.cand button').forEach(b=>b.onclick=()=>lightCandle(+b.dataset.i));
+}
+function lightCandle(i){
+  if(S.lit[i]) return;
+  S.lit[i]=1; S.order.push(CANDLES[i]); tone(700+i*60,.08,'triangle',.06);
+  render();
+  if(S.order.length===5){
+    const ok=S.order.every((c,k)=>c===CANDLE_ANSWER[k]);
+    setTimeout(()=>{
+      if(ok){
+        S.f.nicchia=true; sfx.ok(); closeModal();
+        say('L\'ultima fiamma si alza dritta. Un rumore di pietra che striscia: nel fianco dell\'altare si è aperta una <em>nicchia</em>.');
+        render();
+      } else {
+        sfx.wind(); S.lit=[0,0,0,0,0]; S.order=[]; renderCandles(); render();
+        say('Una folata gelida scende dalla scala e spegne tutte le candele in un colpo. L\'ordine non era quello giusto.');
+      }
+    },500);
+  } else renderCandles();
+}
+
+function ossario(){
+  if(S.f.won) return;
+  if(!S.f.oiled) say('Una grata di ferro chiude l\'ossario. Il chiavistello è un blocco di <em>ruggine</em>: non si muove di un millimetro. Sotto, una serratura dalla forma strana.');
+  else say('Il chiavistello, ora unto, scorre. Manca solo la chiave giusta nella serratura.');
+}
+function ossarioUse(item){
+  if(item==='olio'){
+    if(S.f.oiled){ say('Il chiavistello è già ben oliato.'); return; }
+    S.f.oiled=true; take('olio'); sfx.click();
+    say('Versi l\'olio sulla ruggine. Scricchiola, cede, e il chiavistello finalmente scorre. Resta la serratura.'); render();
+  } else if(item==='chiave'){
+    if(!S.f.oiled){ sfx.no(); say('La chiave entra, ma il chiavistello arrugginito blocca tutto. Serve prima qualcosa che sciolga la ruggine.'); return; }
+    win();
+  } else { sfx.no(); say('Non serve qui.'); }
+}
+function win(){
+  S.f.won=true; S.sel=null; document.body.classList.remove('using'); sfx.bell();
+  modal(`<h2>Fuori dal monastero</h2>
+  <p>La chiave gira. La grata dell'ossario si apre su un cunicolo che scende, oltre le ossa dei frati, fino a una porticina nel muro di cinta.</p>
+  <p>La spingi. Aria fredda, erba bagnata, e le prime luci dell'alba sulle colline. Dietro di te le campane di San Cristoforo suonano il Mattutino.</p>
+  <p class="small">Indizi usati: ${S.hints}</p>
+  <div class="row"><button class="btn gold" onclick="location.reload()">Gioca ancora</button>${NEXT_URL?`<button class="btn" onclick="location.href='${NEXT_URL}'">Prosegui l'avventura</button>`:''}</div>`);
+}
+
+// ---------- indizi ----------
+function hint(){
+  let key,lv;
+  const H={
+    door:['Le date sui sarcofagi sono in numeri romani. «Chiamati dal Signore» vuol dire morti: mettili in ordine, dal primo all\'ultimo.','MCLXXXIX (1189), MCCXLI (1241), MCCLVIII (1258), MCCCXII (1312): prendi l\'iniziale di ciascun nome, in quest\'ordine.'],
+    cipher:['Nello scriptorium c\'è un codice cifrato e la nota del copista spiega come leggerlo. Conta i chiodi del Crocifisso nella cripta.','Ogni lettera va riportata indietro di 3 posti nell\'alfabeto: la D diventa A, la S diventa P… L\'ultima parola è quella che apre la porta dell\'abate.'],
+    credenza:['Chiama S le misure di sale: l\'olio è 2S e la farina è 3×(S+2S)=9S. Il totale fa 24.','S+2S+9S = 12S = 24, quindi S=2. Sale 2, olio 4, farina 18.'],
+    candles:['Nella cella dell\'abate c\'è scritto in quale ordine accendere le candele. La meridiana del chiostro dice quale ora apre il giorno e quale lo chiude.','Vespro, Mattutino, Sesta, Terza, Nona.'],
+    ossario:['La ruggine si vince con l\'olio del refettorio. Poi serve la chiave nascosta nell\'altare.','Seleziona l\'ampolla e tocca la grata; poi seleziona la chiave e tocca di nuovo la grata.'],
+    explore:['Esplora tutte le stanze: chiostro, refettorio, cella dell\'abate.','Ti mancano ancora oggetti o indizi in una stanza che non hai esaminato bene.']
+  };
+  if(!S.f.ironDoor) key='door';
+  else if(!S.f.cellDoor) key='cipher';
+  else if(!S.f.credenza) key='credenza';
+  else if(!S.f.nicchia) key='candles';
+  else key='ossario';
+  lv=S.hintLvl[key]||0;
+  const t=H[key][Math.min(lv,1)];
+  S.hintLvl[key]=lv+1; S.hints++;
+  modal(`<h2>Indizio</h2><p>${t}</p><p class="small">Indizi usati finora: ${S.hints}</p><div class="row"><button class="btn" onclick="closeModal()">Chiudi</button></div>`);
+}
+
+// ---------- rendering ----------
+function render(){
+  const R=ROOMS[S.room];
+  $('roomName').textContent=R.name;
+  const hs=R.hs().map((h,i)=>`<button class="hs" data-i="${i}" style="left:${h.x}%;top:${h.y}%">${h.l}</button>`).join('');
+  $('scene').innerHTML=R.svg()+hs;
+  $('scene').querySelectorAll('.hs').forEach(b=>b.onclick=()=>{
+    const h=R.hs()[+b.dataset.i];
+    if(S.sel){
+      const it=S.sel; S.sel=null; document.body.classList.remove('using'); renderInv();
+      if(h.use) h.use(it); else { sfx.no(); say(`${ITEMS[it]}: non serve qui.`); }
+    } else { sfx.click(); h.a(); }
+  });
+  $('nav').innerHTML=R.nav().map(n=>`<button class="btn" data-to="${n.to}">${n.l}</button>`).join('');
+  $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.to));
+}
+function renderInv(){
+  const el=$('inv');
+  if(!S.inv.length){ el.innerHTML='<span class="lbl">La borsa è vuota.</span>'; return; }
+  el.innerHTML='<span class="lbl">Borsa:</span>'+S.inv.map(k=>`<button class="item ${S.sel===k?'sel':''}" data-k="${k}">${ITEMS[k]}</button>`).join('');
+  el.querySelectorAll('.item').forEach(b=>b.onclick=()=>{
+    sfx.click();
+    if(S.sel===b.dataset.k){ S.sel=null; document.body.classList.remove('using'); say('Rimetti via l\'oggetto.'); }
+    else { S.sel=b.dataset.k; document.body.classList.add('using'); say(`Hai in mano: <em>${ITEMS[S.sel]}</em>. Tocca dove usarlo.`); }
+    renderInv();
+  });
+}
+function go(room){ S.room=room; S.sel=null; document.body.classList.remove('using'); renderInv(); render(); say(ROOMS[room].enter); sfx.click(); }
+
+$('btnHint').onclick=hint;
+$('btnStart').onclick=()=>{ $('intro').classList.remove('on'); tone(300,.05,'sine',.01); go('cripta'); };
+renderInv(); render(); say(ROOMS.cripta.enter);
+</script>
+</body>
+</html>
